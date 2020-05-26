@@ -30,36 +30,20 @@ RUN apk --no-cache add --virtual buildDeps git cmake build-base openssl-dev c-ar
     touch /var/lib/mosquitto/.keep && \
     mkdir -p /etc/mosquitto.d && \
     apk add hiredis postgresql-libs libuuid c-ares openssl curl ca-certificates && \
-    git clone -b ${LIBWEBSOCKETS_VERSION} https://github.com/warmcat/libwebsockets && \
-    cd libwebsockets && \
-    cmake . \
-      -DCMAKE_BUILD_TYPE=MinSizeRel \
-      -DLWS_IPV6=ON \
-      -DLWS_WITHOUT_CLIENT=ON \
-      -DLWS_WITHOUT_TESTAPPS=ON \
-      -DLWS_WITHOUT_EXTENSIONS=ON \
-      -DLWS_WITHOUT_BUILTIN_GETIFADDRS=ON \
-      -DLWS_WITH_ZIP_FOPS=OFF \
-      -DLWS_WITH_ZLIB=OFF \
-      -DLWS_WITH_SHARED=OFF && \
-    make -j "$(nproc)" && \
-    rm -rf /root/.cmake && \
-    cd .. && \
     wget http://mosquitto.org/files/source/mosquitto-${MOSQUITTO_VERSION}.tar.gz && \
     tar xzfv mosquitto-${MOSQUITTO_VERSION}.tar.gz && \
     mv mosquitto-${MOSQUITTO_VERSION} mosquitto && \
     rm mosquitto-${MOSQUITTO_VERSION}.tar.gz && \
     cd mosquitto && \
     make -j "$(nproc)" \
-      CFLAGS="-Wall -O2 -I/libwebsockets/include" \
-      LDFLAGS="-L/libwebsockets/lib" \
+      CFG_CFLAGS="-DRAW_SALT" \
       WITH_SRV=yes \
       WITH_STRIP=yes \
       WITH_ADNS=no \
       WITH_DOCS=no \
       WITH_MEMORY_TRACKING=no \
       WITH_TLS_PSK=no \
-      WITH_WEBSOCKETS=yes \
+      WITH_WEBSOCKETS=no \
     binary && \
     install -s -m755 client/mosquitto_pub /usr/bin/mosquitto_pub && \
     install -s -m755 client/mosquitto_rr /usr/bin/mosquitto_rr && \
@@ -74,28 +58,25 @@ RUN apk --no-cache add --virtual buildDeps git cmake build-base openssl-dev c-ar
     sed -i "s/BACKEND_CDB ?= no/BACKEND_CDB ?= no/" config.mk && \
     sed -i "s/BACKEND_MYSQL ?= yes/BACKEND_MYSQL ?= no/" config.mk && \
     sed -i "s/BACKEND_SQLITE ?= no/BACKEND_SQLITE ?= no/" config.mk && \
-    sed -i "s/BACKEND_REDIS ?= no/BACKEND_REDIS ?= yes/" config.mk && \
+    sed -i "s/BACKEND_REDIS ?= no/BACKEND_REDIS ?= no/" config.mk && \
     sed -i "s/BACKEND_POSTGRES ?= no/BACKEND_POSTGRES ?= yes/" config.mk && \
     sed -i "s/BACKEND_LDAP ?= no/BACKEND_LDAP ?= no/" config.mk && \
-    sed -i "s/BACKEND_HTTP ?= no/BACKEND_HTTP ?= yes/" config.mk && \
+    sed -i "s/BACKEND_HTTP ?= no/BACKEND_HTTP ?= no/" config.mk && \
     sed -i "s/BACKEND_JWT ?= no/BACKEND_JWT ?= no/" config.mk && \
     sed -i "s/BACKEND_MONGO ?= no/BACKEND_MONGO ?= no/" config.mk && \
-    sed -i "s/BACKEND_FILES ?= no/BACKEND_FILES ?= no/" config.mk && \
+    sed -i "s/BACKEND_FILES ?= no/BACKEND_FILES ?= yes/" config.mk && \
     sed -i "s/BACKEND_MEMCACHED ?= no/BACKEND_MEMCACHED ?= no/" config.mk && \
     sed -i "s/MOSQUITTO_SRC =/MOSQUITTO_SRC = ..\//" config.mk && \
     make -j "$(nproc)" && \
     install -s -m755 auth-plug.so /usr/lib/ && \
     install -s -m755 np /usr/bin/ && \
     cd / && rm -rf mosquitto && \
-    rm -rf libwebsockets && \
     apk del buildDeps && rm -rf /var/cache/apk/*
 
 ADD mosquitto.conf /etc/mosquitto/mosquitto.conf
 
 # MQTT default port and default port over TLS
 EXPOSE 1883 8883
-# MQTT over websocket default port and default port over TLS
-EXPOSE 9001 9002
 
 VOLUME ["/var/lib/mosquitto", "/etc/mosquitto", "/etc/mosquitto.d"]
 
